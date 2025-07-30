@@ -1,2 +1,6 @@
 libgl1-mesa-glx
 libglib2.0-0
+
+# Dependência para a biblioteca sounddevice (PortAudio)
+# Necessária para gravação de áudio com st_audio_recorder
+libportaudio2
