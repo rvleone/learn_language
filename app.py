@@ -2,7 +2,7 @@ import streamlit as st
 from pathlib import Path
 import streamlit.components.v1 as components
 
-# Importar as funções do projeto
+# Importar as funções do p
 from st_audio_recorder import start_recording, stop_recording
 from transcribe_audio import transcribe_audio
 from answer_assistant import answer_assistant
