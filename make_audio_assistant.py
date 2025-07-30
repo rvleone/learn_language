@@ -1,7 +1,7 @@
 import tempfile
 
 from openai import APIError
-from openai_client import client
+from openai_client import client  # Supondo que você tenha um cliente OpenAI configurado
 
 # --- Constantes ---
 MODELO_GPT = "gpt-4"
