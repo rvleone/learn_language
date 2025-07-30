@@ -1,8 +1,2 @@
-# packages.txt
-# Adicione aqui as dependências de sistema (pacotes Debian) que seu aplicativo precisa.
-# O Streamlit Cloud usará este arquivo para instalar os pacotes necessários.
-# Saiba mais em https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies#add-python-packages
-
-# Exemplo para bibliotecas comumente necessárias para o OpenCV:
-# libgl1-mesa-glx
-# libglib2.0-0
+libgl1-mesa-glx
+libglib2.0-0
