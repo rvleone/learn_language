@@ -1,5 +1,6 @@
 openai
 python-dotenv
+streamlit>=1.47.0
 numpy
-streamlit>=1.30.0
+scipy
 sounddevice

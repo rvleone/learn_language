@@ -2,11 +2,11 @@ import streamlit as st
 from pathlib import Path
 import streamlit.components.v1 as components
 
-# Importar as funções do p
+# Importar as funções de processamento
 from st_audio_recorder import start_recording, stop_recording
-from transcribe_audio import transcribe_audio
 from answer_assistant import answer_assistant
 from make_audio_assistant import make_audio_assistant
+from transcribe_audio import transcribe_audio
 
 # --- Configuração da Página ---
 st.set_page_config(page_title="English Conversation Practice", layout="wide")
@@ -40,10 +40,10 @@ col1, col2, col3 = st.columns(3)
 with col1:
     if st.button(
         "Gravar Áudio",
+        on_click=start_recording,
         disabled=st.session_state.is_recording,
         use_container_width=True,
     ):
-        start_recording()
         st.rerun()
 
 with col2:
@@ -55,7 +55,7 @@ with col2:
         audio_data, sample_rate = stop_recording()
 
         if audio_data.size > 0:
-            st.info("Processing your audio...")
+            st.info("Processando seu áudio...")
 
             # 1. Transcrever o áudio do usuário
             transcription = transcribe_audio(audio_data, sample_rate)
@@ -66,25 +66,24 @@ with col2:
                 )
 
                 # 2. Obter resposta do assistente
-                with st.spinner("Thinking..."):
+                with st.spinner("Pensando..."):
                     text_answer_assistant = answer_assistant(st.session_state.mensagens)
                     st.session_state.mensagens.append(
                         {"role": "assistant", "content": text_answer_assistant}
                     )
 
                 # 3. Gerar áudio da resposta
-                with st.spinner("Generating audio response..."):
-                    temp_path_audio = make_audio_assistant(text_answer_assistant)
-                    if temp_path_audio:
-                        # Armazena o caminho do áudio no estado da sessão para ser
-                        # reproduzido após a interface ser redesenhada.
-                        st.session_state.audio_to_play = temp_path_audio
+                with st.spinner("Gerando áudio da resposta..."):
+                    assistant_audio_bytes = make_audio_assistant(text_answer_assistant)
+                    if assistant_audio_bytes:
+                        st.session_state.audio_to_play = assistant_audio_bytes
             else:
-                st.warning("Could not understand the audio, please try again.")
+                st.warning(
+                    "Não foi possível entender o áudio, por favor tente novamente."
+                )
         else:
-            st.warning("No audio was recorded.")
+            st.warning("Nenhum áudio foi gravado.")
 
-        # st.rerun() força o script a re-executar, atualizando a interface.
         st.rerun()
 
 with col3:
@@ -115,12 +114,9 @@ with chat_container:
 # Esta parte é executada no final do script para garantir que a interface
 # seja atualizada antes de o áudio começar a tocar.
 if "audio_to_play" in st.session_state and st.session_state.audio_to_play:
-    audio_path = st.session_state.audio_to_play
-    with open(audio_path, "rb") as audio_file:
-        audio_bytes = audio_file.read()
+    audio_bytes = st.session_state.audio_to_play
     st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-    # Limpa o arquivo temporário e a variável de estado para não tocar novamente.
-    Path(audio_path).unlink()
+    # Limpa a variável de estado para não tocar novamente.
     del st.session_state.audio_to_play
 
 # --- Componente para auto-scroll ---
