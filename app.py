@@ -3,16 +3,34 @@ from pathlib import Path
 import streamlit.components.v1 as components
 
 # Importar as funções de processamento
-from st_audio_recorder import start_recording, stop_recording
 from answer_assistant import answer_assistant
 from make_audio_assistant import make_audio_assistant
 from transcribe_audio import transcribe_audio
+
+
+# --- Callback Function ---
+def process_audio_callback():
+    """
+    Callback para processar o áudio.
+    Esta função é executada ANTES da re-execução do script quando um novo áudio é enviado.
+    """
+    # Se não houver áudio no estado do widget, não faz nada.
+    if (
+        "audio_input_user" not in st.session_state
+        or not st.session_state.audio_input_user
+    ):
+        return
+
+    # Armazena os bytes do áudio para serem processados no corpo principal do script
+    audio_file = st.session_state.audio_input_user
+    st.session_state.audio_bytes_to_process = audio_file.read()
+
 
 # --- Configuração da Página ---
 st.set_page_config(page_title="English Conversation Practice", layout="wide")
 st.title("Pratique a sua conversação em inglês")
 st.markdown(
-    "Bem vindo! para praticar a sua conversação em inglês, basta clicar no botão Gravar Áudio, falar e depois clicar em Parar Gravação."
+    "Bem vindo! para praticar a sua conversação em inglês, basta clicar no botão Microfone, falar e depois clicar no botão Stop."
 )
 
 # --- Gerenciamento de Estado da Sessão ---
@@ -31,62 +49,57 @@ if "mensagens" not in st.session_state:
             Keep your own responses clear and easy to understand.",
         }
     ]
-if "is_recording" not in st.session_state:
-    st.session_state.is_recording = False
+# Inicializa a variável de estado para os bytes de áudio
+if "audio_bytes_to_process" not in st.session_state:
+    st.session_state.audio_bytes_to_process = None
 
 # --- Layout da Interface ---
-col1, col2, col3 = st.columns(3)
+
+# --criar 2 colunas para o microfone e o botão de encerrar conversa
+col1, col2 = st.columns([3, 1])
 
 with col1:
-    if st.button(
-        "Gravar Áudio",
-        on_click=start_recording,
-        disabled=st.session_state.is_recording,
-        use_container_width=True,
-    ):
-        st.rerun()
+    st.markdown("### Gravar Mensagem de Voz")
+    st.audio_input(
+        "Grave sua mensagem de voz aqui:",
+        key="audio_input_user",
+        on_change=process_audio_callback,
+    )
 
-with col2:
-    if st.button(
-        "Parar Gravação",
-        disabled=not st.session_state.is_recording,
-        use_container_width=True,
-    ):
-        audio_data, sample_rate = stop_recording()
+    # --- Lógica de Processamento ---
+    # Verifica se o callback preparou bytes de áudio para processamento
+    if st.session_state.audio_bytes_to_process:
+        st.info("Processando seu áudio...")
+        audio_bytes = st.session_state.audio_bytes_to_process
 
-        if audio_data.size > 0:
-            st.info("Processando seu áudio...")
+        # 1. Transcrever o áudio do usuário
+        transcription = transcribe_audio(audio_bytes)
 
-            # 1. Transcrever o áudio do usuário
-            transcription = transcribe_audio(audio_data, sample_rate)
+        if transcription and transcription.strip():
+            st.session_state.mensagens.append(
+                {"role": "user", "content": transcription}
+            )
 
-            if transcription and transcription.strip():
+            # 2. Obter resposta do assistente
+            with st.spinner("Pensando..."):
+                text_answer_assistant = answer_assistant(st.session_state.mensagens)
                 st.session_state.mensagens.append(
-                    {"role": "user", "content": transcription}
+                    {"role": "assistant", "content": text_answer_assistant}
                 )
 
-                # 2. Obter resposta do assistente
-                with st.spinner("Pensando..."):
-                    text_answer_assistant = answer_assistant(st.session_state.mensagens)
-                    st.session_state.mensagens.append(
-                        {"role": "assistant", "content": text_answer_assistant}
-                    )
-
-                # 3. Gerar áudio da resposta
-                with st.spinner("Gerando áudio da resposta..."):
-                    assistant_audio_bytes = make_audio_assistant(text_answer_assistant)
-                    if assistant_audio_bytes:
-                        st.session_state.audio_to_play = assistant_audio_bytes
-            else:
-                st.warning(
-                    "Não foi possível entender o áudio, por favor tente novamente."
-                )
+            # 3. Gerar áudio da resposta
+            with st.spinner("Gerando áudio da resposta..."):
+                assistant_audio_bytes = make_audio_assistant(text_answer_assistant)
+                if assistant_audio_bytes:
+                    st.session_state.audio_to_play = assistant_audio_bytes
         else:
-            st.warning("Nenhum áudio foi gravado.")
+            st.warning("Não foi possível entender o áudio, por favor tente novamente.")
 
-        st.rerun()
-
-with col3:
+        # Limpa os bytes de áudio para não reprocessar na próxima execução
+        st.session_state.audio_bytes_to_process = None
+with col2:
+    st.markdown("### Encerrar Conversa")
+    st.markdown("Clique no botão abaixo para encerrar a conversa e limpar o histórico.")
     if st.button("Encerrar Conversa", use_container_width=True):
         st.session_state.clear()  # Limpa todo o estado da sessão
         st.rerun()
